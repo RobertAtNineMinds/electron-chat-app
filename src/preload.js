@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  chat: (message) => ipcRenderer.invoke('chat', message),
+  chat: (conversationHistory) => ipcRenderer.invoke('chat', conversationHistory),
   saveConversation: (data) => ipcRenderer.invoke('saveConversation', data),
   getConversations: () => ipcRenderer.invoke('getConversations'),
   setApiKey: (apiKey) => ipcRenderer.invoke('setApiKey', apiKey),

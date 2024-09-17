@@ -50,11 +50,11 @@ let anthropic;
     db.close();
   }
 
-  ipcMain.handle('chat', async (event, message) => {
+  ipcMain.handle('chat', async (event, conversationHistory) => {
     try {
       const stream = await anthropic.messages.create({
         max_tokens: 1000,
-        messages: [{ role: 'user', content: message }],
+        messages: conversationHistory,
         model: 'claude-3-opus-20240229',
         stream: true,
       });

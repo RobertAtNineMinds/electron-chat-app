@@ -9,6 +9,8 @@ const updateApiKeyLink = document.getElementById('updateApiKeyLink');
 
 let currentConversationId = null;
 let currentMessageDiv = null;
+let accumulatedResponse = '';
+let conversationHistory = [];
 
 function addMessage(content, isUser = false) {
     const messageDiv = document.createElement('div');
@@ -17,6 +19,10 @@ function addMessage(content, isUser = false) {
     chatContainer.appendChild(messageDiv);
     chatContainer.scrollTop = chatContainer.scrollHeight;
     hljs.highlightAll();
+
+    // Add message to conversation history
+    conversationHistory.push({ role: isUser ? 'user' : 'assistant', content });
+
     return messageDiv;
 }
 
@@ -28,11 +34,14 @@ async function sendMessage() {
 
         try {
             currentMessageDiv = addMessage('', false);
-            const fullResponse = await window.electronAPI.chat(message);
+            accumulatedResponse = ''; // Reset accumulated response
+
+            // Send the entire conversation history
+            const fullResponse = await window.electronAPI.chat(conversationHistory);
             
             const savedId = await window.electronAPI.saveConversation({
                 parentId: currentConversationId,
-                content: JSON.stringify({ user: message, ai: fullResponse })
+                content: JSON.stringify({ history: conversationHistory })
             });
             
             if (!currentConversationId) {
@@ -80,6 +89,7 @@ async function loadConversations() {
 async function loadConversation(id) {
     currentConversationId = id;
     chatContainer.innerHTML = '';
+    conversationHistory = [];
     const conversations = await window.electronAPI.getConversations();
     const conversationChain = [];
     let currentId = id;
@@ -96,19 +106,46 @@ async function loadConversation(id) {
 
     conversationChain.forEach(conv => {
         const content = JSON.parse(conv.content);
-        addMessage(content.user, true);
-        addMessage(content.ai);
+        if (content.history) {
+            // New format with full history
+            content.history.forEach(msg => {
+                addMessage(msg.content, msg.role === 'user');
+            });
+        } else {
+            // Old format with user and AI messages
+            addMessage(content.user, true);
+            addMessage(content.ai);
+        }
     });
 }
 
 // Handle streaming updates
 window.electronAPI.onChatStreamUpdate((event, partialResponse) => {
     if (currentMessageDiv) {
-        currentMessageDiv.innerHTML += marked.parse(partialResponse);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-        hljs.highlightAll();
+        accumulatedResponse += partialResponse;
+        
+        // Check if we have a complete markdown block or code block
+        if (isCompleteBlock(accumulatedResponse)) {
+            currentMessageDiv.innerHTML = marked.parse(accumulatedResponse);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            hljs.highlightAll();
+        }
     }
 });
+
+// Helper function to check if we have a complete block
+function isCompleteBlock(text) {
+    // Check for complete code blocks
+    const codeBlockRegex = /```[\s\S]*?```/g;
+    const completeCodeBlocks = text.match(codeBlockRegex) || [];
+    
+    // Check for complete paragraphs (separated by double newlines)
+    const paragraphRegex = /(.+\n\n|.+$)/g;
+    const completeParagraphs = text.match(paragraphRegex) || [];
+    
+    // If we have any complete blocks, return true
+    return completeCodeBlocks.length > 0 || completeParagraphs.length > 0;
+}
 
 // New function to check API key status
 async function checkApiKeyStatus() {

@@ -1,0 +1,21 @@
+{
+  "name": "electron-chat-app",
+  "version": "1.0.0",
+  "description": "An Electron app for chatting with Anthropic's language model",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.3",
+    "electron": "^28.1.0",
+    "electron-store": "^10.0.0",
+    "highlight.js": "^11.10.0",
+    "marked": "^11.1.0",
+    "sqlite3": "^5.1.7"
+  }
+}

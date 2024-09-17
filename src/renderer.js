@@ -4,6 +4,8 @@ const chatContainer = document.getElementById('chatContainer');
 const conversationList = document.getElementById('conversationList');
 const apiKeyInput = document.getElementById('apiKeyInput');
 const saveApiKeyButton = document.getElementById('saveApiKeyButton');
+const apiKeySection = document.getElementById('apiKeySection');
+const updateApiKeyLink = document.getElementById('updateApiKeyLink');
 
 let currentConversationId = null;
 let currentMessageDiv = null;
@@ -59,6 +61,7 @@ saveApiKeyButton.addEventListener('click', async () => {
         await window.electronAPI.setApiKey(apiKey);
         apiKeyInput.value = '';
         alert('API Key saved successfully!');
+        checkApiKeyStatus();
     }
 });
 
@@ -106,5 +109,26 @@ window.electronAPI.onChatStreamUpdate((event, partialResponse) => {
         hljs.highlightAll();
     }
 });
+
+// New function to check API key status
+async function checkApiKeyStatus() {
+    const apiKeySet = await window.electronAPI.isApiKeySet();
+    if (apiKeySet) {
+        apiKeySection.style.display = 'none';
+        updateApiKeyLink.style.display = 'inline';
+    } else {
+        apiKeySection.style.display = 'block';
+        updateApiKeyLink.style.display = 'none';
+    }
+}
+
+// Event listener for update API key link
+updateApiKeyLink.addEventListener('click', () => {
+    apiKeySection.style.display = 'block';
+    updateApiKeyLink.style.display = 'none';
+});
+
+// Initial check for API key status
+checkApiKeyStatus();
 
 loadConversations();

@@ -108,4 +108,9 @@ let anthropic;
     anthropic = new Anthropic({ apiKey });
   });
 
+  ipcMain.handle('isApiKeySet', () => {
+    const apiKey = store.get('apiKey');
+    return !!apiKey && apiKey.trim() !== '';
+  });
+
 })();

@@ -11,7 +11,13 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "BSD-3-Clause",
+  "licenses": [
+    {
+      "type": "BSD-3-Clause",
+      "url": "https://opensource.org/licenses/BSD-3-Clause"
+    }
+  ],
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",
     "electron": "^28.1.0",

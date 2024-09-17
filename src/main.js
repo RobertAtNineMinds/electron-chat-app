@@ -109,6 +109,19 @@ let anthropic;
     }
   });
   
+  ipcMain.handle('updateConversationTitle', (event, id, newTitle) => {
+    return new Promise((resolve, reject) => {
+      const db = new sqlite3.Database(path.join(app.getPath('userData'), 'conversations.db'));
+      db.run('UPDATE conversations SET title = ? WHERE id = ?', [newTitle, id], function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.changes);
+        }
+      });
+      db.close();
+    });
+  });
 
   ipcMain.handle('createConversation', async (event, title, parentId = null) => {
     return new Promise((resolve, reject) => {
@@ -153,6 +166,20 @@ let anthropic;
           reject(err);
         } else {
           resolve(rows);
+        }
+      });
+      db.close();
+    });
+  });
+
+  ipcMain.handle('getConversation', (event, id) => {
+    return new Promise((resolve, reject) => {
+      const db = new sqlite3.Database(path.join(app.getPath('userData'), 'conversations.db'));
+      db.get('SELECT * FROM conversations WHERE id = ?', [id], (err, row) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(row);
         }
       });
       db.close();

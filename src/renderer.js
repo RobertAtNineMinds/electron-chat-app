@@ -12,6 +12,34 @@ const deleteAllConversationsBtn = document.getElementById('deleteAllConversation
 let currentConversationId = null;
 let currentMessageDiv = null;
 let accumulatedResponse = '';
+const conversationTitle = document.getElementById('conversationTitle');
+const titleInput = document.getElementById('titleInput');
+
+function makeConversationTitleEditable() {
+    conversationTitle.classList.add('d-none');
+    titleInput.value = conversationTitle.textContent;
+    titleInput.classList.remove('d-none');
+    titleInput.focus();
+}
+
+function updateConversationTitle() {
+    const newTitle = titleInput.value.trim();
+    if (newTitle) {
+        conversationTitle.textContent = newTitle;
+        window.electronAPI.updateConversationTitle(currentConversationId, newTitle);
+    }
+    conversationTitle.classList.remove('d-none');
+    titleInput.classList.add('d-none');
+}
+
+conversationTitle.addEventListener('click', makeConversationTitleEditable);
+
+titleInput.addEventListener('blur', updateConversationTitle);
+titleInput.addEventListener('keypress', (event) => {
+    if (event.key === 'Enter') {
+        updateConversationTitle();
+    }
+});
 
 function createMessageDiv(content, isUser = false, messageId = null) {
     const messageDiv = document.createElement('div');
@@ -183,6 +211,9 @@ async function loadConversation(id) {
     currentConversationId = id;
     chatContainer.innerHTML = '';
     const messages = await window.electronAPI.getMessages(id);
+    const conversation = await window.electronAPI.getConversation(id);
+    
+    conversationTitle.textContent = conversation.title || `Conversation ${conversation.id}`;
 
     messages.forEach(msg => {
         addMessage(msg.content, msg.role === 'user', msg.id);
@@ -191,7 +222,6 @@ async function loadConversation(id) {
     chatContainer.scrollTop = chatContainer.scrollHeight;
     hljs.highlightAll();
 
-    // Refresh the conversation list to highlight the current conversation
     await loadConversations();
 }
 
@@ -224,9 +254,9 @@ updateApiKeyLink.addEventListener('click', () => {
 async function startNewConversation() {
     currentConversationId = await window.electronAPI.createConversation('New Conversation');
     chatContainer.innerHTML = '';
+    conversationTitle.textContent = 'New Conversation';
     addMessage("New conversation started. How can I help you?", false);
     await loadConversations();
-    // Scroll to the bottom of the conversation list
     conversationList.scrollTop = conversationList.scrollHeight;
 }
 

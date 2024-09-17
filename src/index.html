@@ -18,7 +18,7 @@
             border-radius: 5px;
         }
         .conversation-list {
-            height: calc(100vh - 150px);
+            height: calc(100vh - 200px);
             overflow-y: auto;
             padding: 10px;
         }
@@ -46,6 +46,8 @@
         <div class="row">
             <div class="col-md-3">
                 <h3 class="mb-3">Conversations</h3>
+                <button id="newConversationBtn" class="btn btn-success mb-2 w-100">New Conversation</button>
+                <button id="deleteAllConversationsBtn" class="btn btn-danger mb-2 w-100">Delete All Conversations</button>
                 <div id="conversationList" class="conversation-list"></div>
             </div>
             <div class="col-md-9">

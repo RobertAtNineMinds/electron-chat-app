@@ -6,5 +6,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getConversations: () => ipcRenderer.invoke('getConversations'),
   setApiKey: (apiKey) => ipcRenderer.invoke('setApiKey', apiKey),
   isApiKeySet: () => ipcRenderer.invoke('isApiKeySet'),
-  onChatStreamUpdate: (callback) => ipcRenderer.on('chatStreamUpdate', callback)
+  onChatStreamUpdate: (callback) => ipcRenderer.on('chatStreamUpdate', callback),
+  // Add new functions for deleting conversations
+  deleteConversation: (id) => ipcRenderer.invoke('deleteConversation', id),
+  deleteAllConversations: () => ipcRenderer.invoke('deleteAllConversations')
 });

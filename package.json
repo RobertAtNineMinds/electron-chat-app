@@ -5,7 +5,9 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "debug": "electron --inspect=5858 .",
+    "debug-brk": "electron --inspect-brk=5858 ."
   },
   "keywords": [],
   "author": "",
@@ -17,5 +19,8 @@
     "highlight.js": "^11.10.0",
     "marked": "^11.1.0",
     "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "electron-devtools-installer": "^3.2.0"
   }
 }

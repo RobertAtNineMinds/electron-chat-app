@@ -52,10 +52,13 @@ let anthropic;
 
   ipcMain.handle('chat', async (event, conversationHistory) => {
     try {
+      // Filter out the 'depth' property from each message
+      const filteredMessages = conversationHistory.map(({ role, content }) => ({ role, content }));
+
       const stream = await anthropic.messages.create({
         max_tokens: 1000,
-        messages: conversationHistory,
-        model: 'claude-3-opus-20240229',
+        messages: filteredMessages,
+        model: 'claude-3-5-sonnet-20240620',
         stream: true,
       });
 
@@ -111,6 +114,36 @@ let anthropic;
   ipcMain.handle('isApiKeySet', () => {
     const apiKey = store.get('apiKey');
     return !!apiKey && apiKey.trim() !== '';
+  });
+
+  // New handler for deleting a single conversation
+  ipcMain.handle('deleteConversation', (event, id) => {
+    return new Promise((resolve, reject) => {
+      const db = new sqlite3.Database(path.join(app.getPath('userData'), 'conversations.db'));
+      db.run('DELETE FROM conversations WHERE id = ?', [id], function (err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.changes);
+        }
+      });
+      db.close();
+    });
+  });
+
+  // New handler for deleting all conversations
+  ipcMain.handle('deleteAllConversations', () => {
+    return new Promise((resolve, reject) => {
+      const db = new sqlite3.Database(path.join(app.getPath('userData'), 'conversations.db'));
+      db.run('DELETE FROM conversations', function (err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.changes);
+        }
+      });
+      db.close();
+    });
   });
 
 })();

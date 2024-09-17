@@ -6,32 +6,40 @@ const apiKeyInput = document.getElementById('apiKeyInput');
 const saveApiKeyButton = document.getElementById('saveApiKeyButton');
 const apiKeySection = document.getElementById('apiKeySection');
 const updateApiKeyLink = document.getElementById('updateApiKeyLink');
+const newConversationBtn = document.getElementById('newConversationBtn');
+const deleteAllConversationsBtn = document.getElementById('deleteAllConversationsBtn');
 
 let currentConversationId = null;
 let currentMessageDiv = null;
 let accumulatedResponse = '';
 let conversationHistory = [];
 
-function addMessage(content, isUser = false, depth = 0) {
+function createMessageDiv(content, isUser = false, depth = 0) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `alert ${isUser ? 'alert-primary' : 'alert-secondary'} mb-3`;
     messageDiv.style.marginLeft = `${depth * 20}px`;
     messageDiv.innerHTML = marked.parse(content);
+    return messageDiv;
+}
+
+function addBranchButton(messageDiv, content) {
+    const branchButton = document.createElement('button');
+    branchButton.className = 'btn btn-sm btn-outline-primary mt-2';
+    branchButton.textContent = 'Branch from here';
+    branchButton.addEventListener('click', () => createBranch(content));
+    messageDiv.appendChild(branchButton);
+}
+
+function addMessage(content, isUser = false, depth = 0) {
+    const messageDiv = createMessageDiv(content, isUser, depth);
     
     if (!isUser) {
-        const branchButton = document.createElement('button');
-        branchButton.className = 'btn btn-sm btn-outline-primary mt-2';
-        branchButton.textContent = 'Branch from here';
-        branchButton.addEventListener('click', () => createBranch(content));
-        messageDiv.appendChild(branchButton);
+        addBranchButton(messageDiv, content);
     }
     
     chatContainer.appendChild(messageDiv);
     chatContainer.scrollTop = chatContainer.scrollHeight;
     hljs.highlightAll();
-
-    // Add message to conversation history
-    conversationHistory.push({ role: isUser ? 'user' : 'assistant', content, depth });
 
     return messageDiv;
 }
@@ -46,8 +54,14 @@ async function sendMessage() {
             currentMessageDiv = addMessage('', false, getCurrentDepth());
             accumulatedResponse = ''; // Reset accumulated response
 
+            // Add user message to conversation history
+            conversationHistory.push({ role: 'user', content: message, depth: getCurrentDepth() });
+
             // Send the entire conversation history
-            const fullResponse = await window.electronAPI.chat(conversationHistory);
+            await window.electronAPI.chat(conversationHistory);
+            
+            // Add the full bot response to conversation history after streaming is complete
+            conversationHistory.push({ role: 'assistant', content: accumulatedResponse, depth: getCurrentDepth() });
             
             const savedId = await window.electronAPI.saveConversation({
                 parentId: currentConversationId,
@@ -126,12 +140,26 @@ async function loadConversations() {
 
     function renderConversation(convId, depth = 0) {
         const conv = conversationMap.get(convId);
+        const convDiv = document.createElement('div');
+        convDiv.className = 'd-flex justify-content-between align-items-center mb-2';
+        convDiv.style.marginLeft = `${depth * 20}px`;
+
         const convButton = document.createElement('button');
-        convButton.className = 'btn btn-outline-secondary w-100 mb-2 text-start';
-        convButton.style.paddingLeft = `${depth * 20 + 10}px`;
+        convButton.className = 'btn btn-outline-secondary flex-grow-1 text-start';
         convButton.textContent = `Conversation ${conv.id}`;
         convButton.addEventListener('click', () => loadConversation(conv.id));
-        conversationList.appendChild(convButton);
+
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'btn btn-danger btn-sm ms-2';
+        deleteButton.textContent = 'Delete';
+        deleteButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteConversation(conv.id);
+        });
+
+        convDiv.appendChild(convButton);
+        convDiv.appendChild(deleteButton);
+        conversationList.appendChild(convDiv);
 
         conv.children.forEach(childId => renderConversation(childId, depth + 1));
     }
@@ -164,44 +192,38 @@ async function loadConversation(id) {
         if (content.history) {
             // New format with full history
             content.history.forEach(msg => {
-                addMessage(msg.content, msg.role === 'user', depth);
+                const messageDiv = createMessageDiv(msg.content, msg.role === 'user', msg.depth);
+                if (msg.role === 'assistant') {
+                    addBranchButton(messageDiv, msg.content);
+                }
+                chatContainer.appendChild(messageDiv);
             });
+            conversationHistory = content.history;
         } else {
             // Old format with user and AI messages
             addMessage(content.user, true, depth);
-            addMessage(content.ai, false, depth);
+            const aiMessageDiv = createMessageDiv(content.ai, false, depth);
+            addBranchButton(aiMessageDiv, content.ai);
+            chatContainer.appendChild(aiMessageDiv);
+            conversationHistory.push({ role: 'user', content: content.user, depth });
+            conversationHistory.push({ role: 'assistant', content: content.ai, depth });
         }
         depth++;
     });
+    
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    hljs.highlightAll();
 }
 
 // Handle streaming updates
 window.electronAPI.onChatStreamUpdate((event, partialResponse) => {
     if (currentMessageDiv) {
         accumulatedResponse += partialResponse;
-        
-        // Check if we have a complete markdown block or code block
-        if (isCompleteBlock(accumulatedResponse)) {
-            currentMessageDiv.innerHTML = marked.parse(accumulatedResponse);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-            hljs.highlightAll();
-        }
+        currentMessageDiv.innerHTML = marked.parse(accumulatedResponse);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        hljs.highlightAll();
     }
 });
-
-// Helper function to check if we have a complete block
-function isCompleteBlock(text) {
-    // Check for complete code blocks
-    const codeBlockRegex = /```[\s\S]*?```/g;
-    const completeCodeBlocks = text.match(codeBlockRegex) || [];
-    
-    // Check for complete paragraphs (separated by double newlines)
-    const paragraphRegex = /(.+\n\n|.+$)/g;
-    const completeParagraphs = text.match(paragraphRegex) || [];
-    
-    // If we have any complete blocks, return true
-    return completeCodeBlocks.length > 0 || completeParagraphs.length > 0;
-}
 
 // New function to check API key status
 async function checkApiKeyStatus() {
@@ -221,7 +243,41 @@ updateApiKeyLink.addEventListener('click', () => {
     updateApiKeyLink.style.display = 'none';
 });
 
+// New function to start a new conversation
+function startNewConversation() {
+    currentConversationId = null;
+    conversationHistory = [];
+    chatContainer.innerHTML = '';
+    addMessage("New conversation started. How can I help you?", false, 0);
+}
+
+// New function to delete a conversation
+async function deleteConversation(id) {
+    if (confirm(`Are you sure you want to delete conversation ${id}?`)) {
+        await window.electronAPI.deleteConversation(id);
+        if (currentConversationId === id) {
+            startNewConversation();
+        }
+        await loadConversations();
+    }
+}
+
+// New function to delete all conversations
+async function deleteAllConversations() {
+    if (confirm("Are you sure you want to delete all conversations? This action cannot be undone.")) {
+        await window.electronAPI.deleteAllConversations();
+        startNewConversation();
+        await loadConversations();
+    }
+}
+
+// Event listeners for new buttons
+newConversationBtn.addEventListener('click', startNewConversation);
+deleteAllConversationsBtn.addEventListener('click', deleteAllConversations);
+
 // Initial check for API key status
 checkApiKeyStatus();
 
+// Load conversations and start a new one
 loadConversations();
+startNewConversation();

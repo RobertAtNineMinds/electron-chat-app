@@ -1,13 +1,14 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  chat: (conversationHistory) => ipcRenderer.invoke('chat', conversationHistory),
-  saveConversation: (data) => ipcRenderer.invoke('saveConversation', data),
+  chat: (conversationId, conversationHistory) => ipcRenderer.invoke('chat', conversationId, conversationHistory),
+  createConversation: (title, parentId) => ipcRenderer.invoke('createConversation', title, parentId),
+  saveMessage: (data) => ipcRenderer.invoke('saveMessage', data),
   getConversations: () => ipcRenderer.invoke('getConversations'),
+  getMessages: (conversationId) => ipcRenderer.invoke('getMessages', conversationId),
   setApiKey: (apiKey) => ipcRenderer.invoke('setApiKey', apiKey),
   isApiKeySet: () => ipcRenderer.invoke('isApiKeySet'),
   onChatStreamUpdate: (callback) => ipcRenderer.on('chatStreamUpdate', callback),
-  // Add new functions for deleting conversations
   deleteConversation: (id) => ipcRenderer.invoke('deleteConversation', id),
   deleteAllConversations: () => ipcRenderer.invoke('deleteAllConversations')
 });
